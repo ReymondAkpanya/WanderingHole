@@ -1,30 +1,34 @@
 LoadPackage("SimplicialSurfaces");
 
 L:=AllTriangularComplexes(IsClosedSurface);
-S1:=L[1];
+tetra:=L[1];
 S2:=L[2];
+
 #--------------------------------
 #input: an simplicial surface S
 #output: a set of all (F,f) whereby F is a Face and f is an edge and 
 #WanderingHole can be performed with (F,f)
 
 H:=function(S)
-	local K,g,f,M,F,i,j;
+	local K,g,f,M,F,i,j,VOF,VOE;
 	K:=[];
 	M:=[];
-	for F in Faces(S) do
+	for F in Faces(S) do		#searches for all pairs (F,f) where F and f share one Vertex
+		VOF:=VerticesOfFace(S,F);
 		for f in Edges(S) do 
-			if VerticesOfEdge(S,f)[1] in VerticesOfFace(S,F) and not(VerticesOfEdge(S,f)[2] in VerticesOfFace(S,F)) then 		
+			VOE:=VerticesOfEdge(S,f);
+			if VOE[1] in VOF and not(VOE[2] in VOF) then 		
 				Add(K,[F,f]);
 			fi;
-			if VerticesOfEdge(S,f)[2] in VerticesOfFace(S,F) and not(VerticesOfEdge(S,f)[1] in VerticesOfFace(S,F)) then
-				Add(K,[F,f]);
+			if VOE[2] in VOF and not(VOE[1] in VOF) then
+					Add(K,[F,f]);
 			fi;
 		od;
 	od;
-	for g in K do
+	for g in K do			#picking only the pairs where the edge f and the edges of F share one face 
 		for i in [1,2,3] do
 			for j in [1,2] do
+			
 				if FacesOfEdge(S,g[2])[j]  in 
 				FacesOfEdge(S,EdgesOfFace(S,g[1])[i]) then
 					Add(M,g);
@@ -32,7 +36,7 @@ H:=function(S)
 			od;
 		od;
 	od;
-	return M;
+	return Set( M);
 end;
 #------------------------------------------------------------------
 #input: a simplicial surface S,List L where by L[1] is a face and L[2} is 
@@ -45,6 +49,7 @@ Hole:=function(S,L)
 	S:=SplitCut(S,EdgesOfFace(S,L[1])[1]);
 	return S;
 end;
+
 #---------------------------------------------------------------------------
 #input: a siplicial surface S , List L wherby L[1] is a face and L[2] is 
 #an edge
@@ -97,7 +102,7 @@ WanderingHole:=function(S,L)
 	S:=SplitMend(S,SplitMendableFlagPairs(S)[1]);
 	temp:=true;
 	for h in RipMendableEdgePairs(S) do
-		if h[1] in EdgesOfFace(S,L[1]) and not(h[2] in EdgesOfFace(S,L[1])) and temp=true then
+		if h[1] in EdgesOfFace(S,L[1]) and not(h[2] in EdgesOfFace(S,L[1])) and temp then
 			S:=RipMend(S,h);
 			temp:=false;
 		fi;
@@ -109,15 +114,14 @@ end;
 #----------------------------------------------
 #function needed for WanderRek, returns a List of all simplicial surface 
 #surfaces which can be created by performing a wandering hole
+
 WanderRekHelp:=function(S,K)
 	local g,T,a,L;
 	for g in H(S) do
 		a:=true;
-		
-T:=PolygonalComplexIsomorphismRepresentatives([WanderingHole(S,g)])[1];		
+		T:=WanderingHole(S,g);		
 		if notIso(T,K) then 
-			
-	Add(K,PolygonalComplexIsomorphismRepresentatives([T])[1]);
+			Add(K,T);
 			K:=WanderRekHelp(T,K);
 		fi;
 	od;
@@ -127,16 +131,25 @@ end;
 #--------------------------------------
 #returns a list of all surfaces which can be created by performing the 
 #wandering hole
+
 WanderRek:=function(S)
-	local K;
-	K:=PolygonalComplexIsomorphismRepresentatives([S]);
-	return WanderRekHelp(S,K);
+	local K,L,g;
+	K:=[S];
+	L:=[];
+	K:=WanderRekHelp(S,K);
+	for g in K do			#collecting only the surfaces which have no waists
+		if HasNoWaist(g) then
+			Add(L,g);
+		fi;
+	od;
+	return L;
 end;
 
 #---------------------------------------------------------
 #input : a simplicial surface S and a list of surfaces L
 # returns true if S is not isomorph to any surface in L
 #returns false false if there is an isomorph surface in L
+
 notIso:=function(S,L)
 	local T,a;
 	a:=true;
@@ -146,4 +159,52 @@ notIso:=function(S,L)
 		fi;
 	od;
 	return a;
+end;
+
+#-----------------------------------------------
+
+#input: a simplicial surface with n faces and no waists
+#returns a simplicial surface with n+2 faces and a 2-waist
+
+CreatingTwoWaist:=function(S,f)
+	local g,L1,L2,Z,D;
+	L1:=[[2,3],[1,3],[1,2],[1,2]];
+	L2:=[[1,2,3],[1,2,4]];			
+	S:=CraterCut(S,f);	
+	Z:=SimplicialSurfaceByDownwardIncidence(L1,L2);	#define open-bag		
+	S:=DisjointUnion(S,Z,Length(Vertices(S)))[1];	#creating surface
+	S:=SplitMend(S,SplitMendableFlagPairs(S)[1]);	#with 2-waist
+	S:=CraterMend(S,CraterMendableEdgePairs(S)[2]);
+	return S;
+end;
+
+#-----------------------------------
+
+#input: simplicial Surface with n faces and withhout waists
+#returns an simplicial surface with n+3 Faces and an 3-waist
+
+CreatingThreeWaist:=function(S,F)
+	local g,T;
+	T:=RemoveFace(tetra,1);				#define Hut
+	S:=RemoveFace(S,F);
+	S:=DisjointUnion(S,T,Length(Vertices(S)))[1];
+	S:=SplitMend(S,SplitMendableFlagPairs(S)[1]);
+	S:=RipMend(S,RipMendableEdgePairs(S)[2]);
+	S:=CraterMend(S,CraterMendableEdgePairs(S)[2]);
+	return S;
+end;
+
+#-----------------------
+# function tests for an given surface S, whether there is a Two- or 
+#Three-Waist by using the pseudoWaistTest (searching for
+# Vertices with FaceDegre 2 or 3)
+#returns true if there are no waists, flase if there are.
+
+HasNoWaist:=function(S)
+	local g,D;
+	D:=FaceDegreesOfVertices(S);
+	if 2 in D  or 3 in D then
+		return false;
+	fi; 
+	return true;
 end;
