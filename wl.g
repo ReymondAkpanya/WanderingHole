@@ -138,9 +138,9 @@ WanderRek:=function(S)
 	L:=[];
 	K:=WanderRekHelp(S,K);
 	for g in K do			#collecting only the surfaces which have no waists
-		if HasNoWaist(g) then
+		#if HasNoWaist(g) then
 			Add(L,g);
-		fi;
+		#fi;
 	od;
 	return L;
 end;
