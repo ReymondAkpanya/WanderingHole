@@ -1,0 +1,269 @@
+[ function ( S )
+        local  K, g, f, M, F, i, j, VOF, VOE;
+        K := [  ];
+        M := [  ];
+        for F  in Faces( S )  do
+            VOF := VerticesOfFace( S, F );
+            for f  in Edges( S )  do
+                VOE := VerticesOfEdge( S, f );
+                if VOE[1] in VOF and not VOE[2] in VOF  then
+                    Add( K, [ F, f ] );
+                fi;
+                if VOE[2] in VOF and not VOE[1] in VOF  then
+                    Add( K, [ F, f ] );
+                fi;
+            od;
+        od;
+        for g  in K  do
+            for i  in [ 1, 2, 3 ]  do
+                for j  in [ 1, 2 ]  do
+                    if
+                     FacesOfEdge( S, g[2] )[j] 
+                        in FacesOfEdge( S, EdgesOfFace( S, g[1] )[i] )  then
+                        Add( M, g );
+                    fi;
+                od;
+            od;
+        od;
+        return Set( M );
+    end, <Attribute "Faces">, <Operation "VerticesOfFace">, 
+  <Attribute "Edges">, <Operation "VerticesOfEdge">, 
+  <Operation "FacesOfEdge">, <Operation "EdgesOfFace">, function ( S, L )
+        S := CraterCut( S, EdgesOfFace( S, L[1] )[1] );
+        S := RipCut( S, EdgesOfFace( S, L[1] )[1] );
+        S := SplitCut( S, EdgesOfFace( S, L[1] )[1] );
+        return S;
+    end, <Operation "CraterCut">, <Operation "RipCut">, 
+  <Operation "SplitCut">, function ( S, L )
+        local  M, temp, g, h, a, rm;
+        if not IsClosedSurface( S )  then
+            return "Surface must be closed";
+        fi;
+        if not IsTriangularComplex( S )  then
+            return "S must be a triangular Complex";
+        fi;
+        if Length( Faces( S ) ) < 3  then
+            return "S must be a triangular Complex";
+        fi;
+        if not Length( L ) = 2  then
+            return "List L must consist of a Face and an Edge";
+        fi;
+        if not L[1] in Faces( S )  then
+            return "L[1] must be a face of S";
+        fi;
+        if not L[2] in Edges( S )  then
+            return "L[2] must be an edge of S";
+        fi;
+        if not L in H( S )  then
+            return "[F,f] must be in set H(S)";
+        fi;
+        S := Hole( S, L );
+        for g  in BoundaryEdges( S )  do
+            if FacesOfEdge( S, g )[1] in FacesOfEdge( S, L[2] )  then
+                a := g;
+            fi;
+        od;
+        S := RipCut( S, L[2] );
+        rm := [  ];
+        M 
+         := [ Edges( S )[Length( Edges( S ) )], 
+            Edges( S )[Length( Edges( S ) ) - 1] ];
+        for g  in BoundaryEdges( S )  do
+            if [ a, g ] in RipMendableEdgePairs( S ) and not g in M  then
+                rm := [ a, g ];
+            fi;
+            if [ g, a ] in RipMendableEdgePairs( S ) and not g in M  then
+                rm := [ g, a ];
+            fi;
+        od;
+        S := RipMend( S, rm );
+        S := SplitMend( S, SplitMendableFlagPairs( S )[1] );
+        temp := true;
+        for h  in RipMendableEdgePairs( S )  do
+            if
+             h[1] in EdgesOfFace( S, L[1] ) 
+                  and not h[2] in EdgesOfFace( S, L[1] ) and temp  then
+                S := RipMend( S, h );
+                temp := false;
+            fi;
+        od;
+        S := CraterMend( S, CraterMendableEdgePairs( S )[2] );
+        return S;
+    end, <Property "IsClosedSurface">, <Attribute "BoundaryEdges">, 
+  <Attribute "RipMendableEdgePairs">, <Attribute "SplitMendableFlagPairs">, 
+  <Operation "RipMend">, <Operation "SplitMend">, <Operation "CraterMend">, 
+  function ( S, K )
+        local  g, T, a, L;
+        for g  in H( S )  do
+            a := true;
+            T := WanderingHole( S, g );
+            T := CanonicalRepresentativeOfPolygonalSurface2( T )[1];
+            if not T in K  then
+                Add( K, T );
+                K := WanderRekHelp( T, K );
+            fi;
+        od;
+        return K;
+    end, <Attribute "CraterMendableEdgePairs">, function ( surf )
+        local  originalfacesofsurf, originaledgesofsurf, 
+        originalverticesofsurf, totalgraphverts, mapfaces, mapedges, 
+        mapvertices, currentvert, i, vertsofgraph, edges, edgesofface, j, 
+        verticesofface, verticesofedge, graph, perm, perminv, 
+        edgesoffacesofsurf, F, edgesofface2, verticesofedgesofsurf, e, 
+        verticesofedge2, newfaces, newedges, newvertices, n1, n2, n3, 
+        mapfaces2, mapedges2, mapvertices2, edgesoffacesofsurf2, 
+        verticesofedgesofsurf2, surf2, surf3, colours, inversefacemap, 
+        inverseedgemap, inversevertexmap;
+        originalfacesofsurf := Faces( surf );
+        originaledgesofsurf := Edges( surf );
+        originalverticesofsurf := Vertices( surf );
+        n1 := NumberOfFaces( surf );
+        n2 := NumberOfEdges( surf );
+        n3 := NumberOfVertices( surf );
+        totalgraphverts := n1 + n2 + n3;
+        mapfaces := ListWithIdenticalEntries( Maximum( originalfacesofsurf )
+            , 0 );
+        mapedges := ListWithIdenticalEntries( Maximum( originaledgesofsurf )
+            , 0 );
+        mapvertices 
+         := ListWithIdenticalEntries( Maximum( originalverticesofsurf ), 0 )
+         ;
+        colours := [  ];
+        currentvert := 0;
+        for i  in originalfacesofsurf  do
+            currentvert := currentvert + 1;
+            mapfaces[i] := currentvert;
+            Add( colours, 1 );
+        od;
+        for i  in originaledgesofsurf  do
+            currentvert := currentvert + 1;
+            mapedges[i] := currentvert;
+            Add( colours, 2 );
+        od;
+        for i  in originalverticesofsurf  do
+            currentvert := currentvert + 1;
+            mapvertices[i] := currentvert;
+            Add( colours, 3 );
+        od;
+        vertsofgraph := [ 1 .. totalgraphverts ];
+        edges := [  ];
+        for i  in originalfacesofsurf  do
+            edgesofface := EdgesOfFace( surf, i );
+            for j  in edgesofface  do
+                Add( edges, [ mapfaces[i], mapedges[j] ] );
+            od;
+            verticesofface := VerticesOfFace( surf, i );
+            for j  in verticesofface  do
+                Add( edges, [ mapfaces[i], mapvertices[j] ] );
+            od;
+        od;
+        for i  in originaledgesofsurf  do
+            verticesofedge := VerticesOfEdge( surf, i );
+            for j  in verticesofedge  do
+                Add( edges, [ mapedges[i], mapvertices[j] ] );
+            od;
+        od;
+        graph := NautyColoredGraph( edges, colours );
+        perminv := CanonicalLabeling( graph );
+        perm := perminv ^ -1;
+        edgesoffacesofsurf := [  ];
+        for i  in originalfacesofsurf  do
+            F := mapfaces[i] ^ perm;
+            edgesofface := EdgesOfFace( surf, i );
+            edgesofface2 := List( edgesofface, function ( t )
+                    return mapedges[t] ^ perm;
+                end );
+            edgesoffacesofsurf[F] := edgesofface2;
+            ;
+        od;
+        verticesofedgesofsurf := [  ];
+        for i  in originaledgesofsurf  do
+            e := mapedges[i] ^ perm;
+            verticesofedge := VerticesOfEdge( surf, i );
+            verticesofedge2 := List( verticesofedge, function ( t )
+                    return mapvertices[t] ^ perm;
+                end );
+            verticesofedgesofsurf[e] := verticesofedge2;
+            ;
+        od;
+        newfaces := Set( originalfacesofsurf, function ( t )
+                return mapfaces[t] ^ perm;
+            end );
+        newedges := Set( originaledgesofsurf, function ( t )
+                return mapedges[t] ^ perm;
+            end );
+        newvertices := Set( originalverticesofsurf, function ( t )
+                return mapvertices[t] ^ perm;
+            end );
+        mapfaces2 := [  ];
+        for i  in [ 1 .. Size( newfaces ) ]  do
+            mapfaces2[newfaces[i]] := i;
+        od;
+        mapedges2 := [  ];
+        for i  in [ 1 .. Size( newedges ) ]  do
+            mapedges2[newedges[i]] := i;
+        od;
+        mapvertices2 := [  ];
+        for i  in [ 1 .. Size( newvertices ) ]  do
+            mapvertices2[newvertices[i]] := i;
+        od;
+        edgesoffacesofsurf2 := [  ];
+        for i  in newfaces  do
+            F := mapfaces2[i];
+            edgesoffacesofsurf2[F] := List( edgesoffacesofsurf[i], 
+               function ( t )
+                    return mapedges2[t];
+                end );
+            ;
+        od;
+        verticesofedgesofsurf2 := [  ];
+        for i  in newedges  do
+            e := mapedges2[i];
+            verticesofedgesofsurf2[e] := List( verticesofedgesofsurf[i], 
+               function ( t )
+                    return mapvertices2[t];
+                end );
+            ;
+        od;
+        inversefacemap := List( [ 1 .. n1 ], function ( t )
+                return Position( mapfaces2, t );
+            end );
+        inversefacemap := List( inversefacemap, function ( t )
+                return t ^ perminv;
+            end );
+        inversefacemap := List( inversefacemap, function ( t )
+                return Position( mapfaces, t );
+            end );
+        inverseedgemap := List( [ 1 .. n2 ], function ( t )
+                return Position( mapedges2, t );
+            end );
+        inverseedgemap := List( inverseedgemap, function ( t )
+                return t ^ perminv;
+            end );
+        inverseedgemap := List( inverseedgemap, function ( t )
+                return Position( mapedges, t );
+            end );
+        inversevertexmap := List( [ 1 .. n3 ], function ( t )
+                return Position( mapvertices2, t );
+            end );
+        inversevertexmap := List( inversevertexmap, function ( t )
+                return t ^ perminv;
+            end );
+        inversevertexmap := List( inversevertexmap, function ( t )
+                return Position( mapvertices, t );
+            end );
+        surf2 := PolygonalSurfaceByDownwardIncidence( verticesofedgesofsurf2
+            , edgesoffacesofsurf2 );
+        return 
+         [ surf2, [ inversefacemap, inverseedgemap, inversevertexmap ] ];
+    end, function ( S )
+        local  K, L, g;
+        S := CanonicalRepresentativeOfPolygonalSurface2( S )[1];
+        K := [ S ];
+        L := [  ];
+        K := WanderRekHelp( S, K );
+        for g  in K  do
+            Add( L, g );
+        od;
+        return L;
+    end ]

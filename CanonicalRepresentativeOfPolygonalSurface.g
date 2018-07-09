@@ -45,11 +45,12 @@
 #!	@Arguments A polygonal surface
 #!	@Returns A list containing the canonical form of the surface and maps from the new
 #!	face, edge and point set respectively, to the old face, edge and point set.
-DeclareOperation( "CanonicalRepresentativeOfPolygonalSurface", [IsPolygonalSurface]);
+# DeclareOperation( "CanonicalRepresentativeOfPolygonalSurface", [IsPolygonalSurface]);
 
 
-InstallMethod( CanonicalRepresentativeOfPolygonalSurface, 
-	"for a polygonal surface", [IsPolygonalSurface],
+# InstallMethod( CanonicalRepresentativeOfPolygonalSurface, 
+# 	"for a polygonal surface", [IsPolygonalSurface],
+CanonicalRepresentativeOfPolygonalSurface2 := 
 	function( surf )
 		local originalfacesofsurf, originaledgesofsurf, originalverticesofsurf,
 		totalgraphverts, mapfaces, mapedges, mapvertices, currentvert, i, vertsofgraph,
@@ -211,7 +212,7 @@ InstallMethod( CanonicalRepresentativeOfPolygonalSurface,
 		# maps to inversemap[i] in the old surface.
 		return [surf2, [inversefacemap, inverseedgemap, inversevertexmap]];
 	end
-);
+;
 
 
 #!	@Description

@@ -4,6 +4,21 @@ L:=AllTriangularComplexes(IsClosedSurface);
 tetra:=L[1];
 S2:=L[2];
 
+#-----------------------
+# function tests for an given surface S, whether there is a Two- or 
+#Three-Waist by using the pseudoWaistTest (searching for
+# Vertices with FaceDegre 2 or 3)
+#returns true if there are no waists, flase if there are.
+
+HasNoWaist:=function(S)
+	local g,D;
+	D:=FaceDegreesOfVertices(S);
+	if 2 in D  or 3 in D then
+		return false;
+	fi; 
+	return true;
+end;
+
 #--------------------------------
 #input: an simplicial surface S
 #output: a set of all (F,f) whereby F is a Face and f is an edge and 
@@ -120,7 +135,8 @@ WanderRekHelp:=function(S,K)
 	for g in H(S) do
 		a:=true;
 		T:=WanderingHole(S,g);		
-		if notIso(T,K) then 
+                T := CanonicalRepresentativeOfPolygonalSurface2(T)[1];
+		if not T in K then 
 			Add(K,T);
 			K:=WanderRekHelp(T,K);
 		fi;
@@ -134,6 +150,7 @@ end;
 
 WanderRek:=function(S)
 	local K,L,g;
+        S := CanonicalRepresentativeOfPolygonalSurface2(S)[1];
 	K:=[S];
 	L:=[];
 	K:=WanderRekHelp(S,K);
@@ -150,16 +167,16 @@ end;
 # returns true if S is not isomorph to any surface in L
 #returns false false if there is an isomorph surface in L
 
-notIso:=function(S,L)
-	local T,a;
-	a:=true;
-	for T in L do 
-		if IsIsomorphicPolygonalComplex(T,S) then 
-			a:=false;
-		fi;
-	od;
-	return a;
-end;
+# notIso:=function(S,L)
+# 	local T,a;
+# 	a:=true;
+# 	for T in L do 
+# 		if IsIsomorphicPolygonalComplex(T,S) then 
+# 			a:=false;
+# 		fi;
+# 	od;
+# 	return a;
+#end;
 
 #-----------------------------------------------
 
@@ -194,17 +211,3 @@ CreatingThreeWaist:=function(S,F)
 	return S;
 end;
 
-#-----------------------
-# function tests for an given surface S, whether there is a Two- or 
-#Three-Waist by using the pseudoWaistTest (searching for
-# Vertices with FaceDegre 2 or 3)
-#returns true if there are no waists, flase if there are.
-
-HasNoWaist:=function(S)
-	local g,D;
-	D:=FaceDegreesOfVertices(S);
-	if 2 in D  or 3 in D then
-		return false;
-	fi; 
-	return true;
-end;
