@@ -17,11 +17,9 @@ Wandering:=function(S,Face,Edge)
 	if VertF=VertN then
 		return fail;
 	fi;
-    	#VerticesOfE:=[];    
-    	#Append(VerticesOfE,VerticesOfEdges(S));    
+   
 	VerticesOfE:=ShallowCopy(VerticesOfEdges(S));    
-    	#EdgesOfF:=[];    
-    	#Append(EdgesOfF,EdgesOfFaces(S));    
+       
  	EdgesOfF:=ShallowCopy(EdgesOfFaces(S));    
  	VerticesOfF:=ShallowCopy(VerticesOfFaces(S));  
        
@@ -101,14 +99,22 @@ WanderingIterativWithoutWaist:=function(S)
         return SurfaceStackW;
 end;
 
+Found:=function(S,L)
+	if S in L then
+		return false;
+	fi;
+	return true;
+end;
+
 FoundSurfaces:=function(S)
-	local counter, ende,surface,edge,T,Foundsurf,Listofsurfaces;
+	local counter, ende,surface,edge,i,T,Foundsurf,Listofsurfaces;
 	Listofsurfaces:=AllSimplicialSurfaces(NumberOfFaces(S),
 			EulerCharacteristic,2);
 	Listofsurfaces:=List(Listofsurfaces,surface->
 			CanonicalRepresentativeOfPolygonalSurface2(surface)[1]);
 	S:=CanonicalRepresentativeOfPolygonalSurface2(S)[1];
 	Foundsurf:=[S];
+	i:=0;
 	counter:=0;
 	ende:=Length(Listofsurfaces);
 	if S in Listofsurfaces then
@@ -116,20 +122,24 @@ FoundSurfaces:=function(S)
 	fi;	
 	for surface in Foundsurf do
 		for edge in Edges(surface) do
+			#Print(counter, "=",ende,"\n");
 			if counter=ende then 
 				return [true, Foundsurf];
 			fi;
                         T:=Wandering(surface,FacesOfEdge(surface,edge)[1],edge);
+			i:=i+1;
+			#Print(T<>fail,i,"\n");
                         if T <> fail then
-                                T:=CanonicalRepresentativeOfPolygonalSurface2(T)[1];
-                                if not(T in Foundsurf) then
-                                        Add(Foundsurf,T);
+            			T:=CanonicalRepresentativeOfPolygonalSurface2(T)[1];
+                                #Print(Found(T,Listofsurfaces));
+				if Found(T,Foundsurf) then
+                                       	Add(Foundsurf,T);
 					counter:=counter+1;
                                 fi;
                         fi;
                 od;
         od;
-	return Foundsurf;
+	return [Foundsurf,counter];
 
 end;
 
@@ -153,8 +163,8 @@ end;
 
 ListOfFunctions:=[Wandering,NeighbourFaceByEdge,VerticesOfEdge,
         OtherEdgeOfVertexInFace,OtherVertexOfEdge,Append,
-        SimplicialSurfaceByDownwardIncidence,hilf,Filtered,
-        EdgesOfFace,VerticesOfEdge,Add,Whelp,Faces,WanderingIterativ,
+        SimplicialSurfaceByDownwardIncidence,Filtered,
+        EdgesOfFace,VerticesOfEdge,Add,Faces,WanderingIterativ,
         CanonicalRepresentativeOfPolygonalSurface2];
 
 
@@ -191,4 +201,3 @@ ListOfFunctions:=[Wandering,NeighbourFaceByEdge,VerticesOfEdge,
 #       return Wlist;
 #       #return Filtered(Wlist,g->g<>[]);
 #end;
-
